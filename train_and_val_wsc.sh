@@ -2,7 +2,7 @@
 set -e
 set -x
 export PYTHONPATH=$(pwd)
-batchsizes=( 3 4 8 )
+batchsizes=( 8 16 32 64 )
 for s in "${batchsizes[@]}"
 do
 	learningrates=( 1e-5 2e-5 3e-5 5e-5 )
