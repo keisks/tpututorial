@@ -15,7 +15,7 @@ do
 			for w in "${warmups[@]}"
 			do
 				python bert/run_bert.py \
-				  --output_dir=gs://chandrab-tpu-tutorial/wsc_batch-${s}_lr-${l}_epoch-${e}-warmup-${w}/ \
+				  --output_dir=gs://chandrab-tpu-tutorial/wsc-20k/batch-${s}_lr-${l}_epoch-${e}-warmup-${w}/ \
 				  --input_data=data/wsc-20k/ \
 				  --do_lower_case=True \
 				  --max_seq_length=64 \
