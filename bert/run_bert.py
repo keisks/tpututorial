@@ -260,20 +260,27 @@ elif FLAGS.task == "anli":
         with gcs_agnostic_open(fname, r) as f:
             for idx, line in enumerate(f):
                 record = json.loads(line)
+                guid = "%s%s" % (record['InputStoryid'], record['ending'])
                 beginning = record['InputSentence1']
                 ending = record['InputSentence5']
-
-                option1 = record['RandomMiddleSentenceQuiz1']
-                option2 = record['RandomMiddleSentenceQuiz2']
 
                 label = record['AnswerRightEnding']
 
                 if label == "1":
-                    context_1 = beginning + " " + option1
-                    text_b = ""
+                    option1 = record['RandomMiddleSentenceQuiz1'] + " " + ending
+                    option2 = record['RandomMiddleSentenceQuiz2'] + " " + ending
+                else:
+                    option1 = record['RandomMiddleSentenceQuiz2'] + " " + ending
+                    option2 = record['RandomMiddleSentenceQuiz1'] + " " + ending
 
-
-                anli_examples.append()
+                anli_examples.append(
+                    InputExample(
+                        guid='{}-{}'.format(guid, split),
+                        text_a=beginning,
+                        text_b=[option1, option2],
+                        label=0
+                    )
+                )
         return anli_examples
 
 
