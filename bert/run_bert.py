@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """BERT finetuning runner."""
-
+import json
 import os
 
 import numpy as np
@@ -132,6 +132,11 @@ flags.DEFINE_bool(
     "Use ONLY THE ENDING"
 )
 
+flags.DEFINE_string(
+    "task", "anli",
+    "Which task"
+)
+
 # just use it for something?
 hi = FLAGS.use_tpu
 # flags.FLAGS._parse_flags()
@@ -166,87 +171,123 @@ def _part_b_gen(item, i):
         return item['gens'][i]
     return '{} {}'.format(item['ctx_b'], item['gens'][i])
 
+if FLAGS.task == "swag":
+    """
+    SWAG READER
+    """
 
-"""
-SWAG READER
-"""
-
-# I'll load examples that look like this
-# {"source_dataset": "anet", "id": "v_jkn6uvmqwh4", "labels": ["Drum corps"], "split": "train", "extra_context": ["A parade procession walks down the street in a parade.", "A group of members in green uniforms walks waving flags."], "ctx_a": "Members of the procession walk down the street holding small horn brass instruments.", "ctx_b": "A drum line", "gt": "passes by walking down the street playing their instruments.", "gens": ["arrives and they're outside dancing and asleep.", "turns the lead singer watches the performance.", "has heard approaching them."], "gt_type": "pos", "gens_type": ["unl", "unl", "pos"], "human_written": true}
-# examples = {'train': [], 'val': [], 'test': [], 'darpa': []}
-# with gcs_agnostic_open(FLAGS.input_data, 'r') as f:
-#     for l_no, l in enumerate(f):
-#         item = json.loads(l)
-#         if item.get('human_written', True):
-#             examples[item['split']].append(
-#                 InputExample(
-#                     guid='{}-{}'.format(item['split'], len(examples[item['split']])),
-#                     text_a=_part_a(item),
-#                     text_b=[_part_b_gt(item)] + [_part_b_gen(item, i) for i, g in enumerate(item['gens'])],
-#                     label=0,
-#                 )
-#             )
-# train_examples = examples['train'][:FLAGS.num_train] if FLAGS.num_train >= 0 else examples['train']
-# tf.logging.info("@@@@@ {} training examples (num_train={}) @@@@@".format(len(train_examples), FLAGS.num_train))
-#
-# val_examples = examples['val']
-# test_examples = examples['test']
-
-
-"""
-WSC READER
-"""
-
-
-def read_examples(fname, split):
-    split_examples = []
-    with gcs_agnostic_open(fname, 'r') as f:
-        for idx, line in enumerate(f):
-            if idx == 0:
-                continue
-            parts = line.split("\t")
-
-            qid = parts[0]
-            sentence = parts[1].replace("\"", "")
-
-            name1 = parts[2]
-            name2 = parts[3]
-
-            idx = sentence.index("_")
-            context = sentence[:idx].strip()
-            option_template = sentence[idx + 1:].strip()
-
-            label = parts[4]
-
-            if label == "1":
-                option1 = name1 + " " + option_template
-                option2 = name2 + " " + option_template
-            else:
-                option1 = name2 + " " + option_template
-                option2 = name1 + " " + option_template
+    # I'll load examples that look like this
+    # {"source_dataset": "anet", "id": "v_jkn6uvmqwh4", "labels": ["Drum corps"], "split": "train", "extra_context": ["A parade procession walks down the street in a parade.", "A group of members in green uniforms walks waving flags."], "ctx_a": "Members of the procession walk down the street holding small horn brass instruments.", "ctx_b": "A drum line", "gt": "passes by walking down the street playing their instruments.", "gens": ["arrives and they're outside dancing and asleep.", "turns the lead singer watches the performance.", "has heard approaching them."], "gt_type": "pos", "gens_type": ["unl", "unl", "pos"], "human_written": true}
+    # examples = {'train': [], 'val': [], 'test': [], 'darpa': []}
+    # with gcs_agnostic_open(FLAGS.input_data, 'r') as f:
+    #     for l_no, l in enumerate(f):
+    #         item = json.loads(l)
+    #         if item.get('human_written', True):
+    #             examples[item['split']].append(
+    #                 InputExample(
+    #                     guid='{}-{}'.format(item['split'], len(examples[item['split']])),
+    #                     text_a=_part_a(item),
+    #                     text_b=[_part_b_gt(item)] + [_part_b_gen(item, i) for i, g in enumerate(item['gens'])],
+    #                     label=0,
+    #                 )
+    #             )
+    # train_examples = examples['train'][:FLAGS.num_train] if FLAGS.num_train >= 0 else examples['train']
+    # tf.logging.info("@@@@@ {} training examples (num_train={}) @@@@@".format(len(train_examples), FLAGS.num_train))
+    #
+    # val_examples = examples['val']
+    # test_examples = examples['test']
+elif FLAGS.task == "wsc":
+    """
+    WSC READER
+    """
 
 
+    def read_examples(fname, split):
+        split_examples = []
+        with gcs_agnostic_open(fname, 'r') as f:
+            for idx, line in enumerate(f):
+                if idx == 0:
+                    continue
+                parts = line.split("\t")
 
-            split_examples.append(
-                InputExample(
-                    guid='{}-{}'.format(qid, split),
-                    text_a=context,
-                    text_b=[option1, option2],
-                    label=0
+                qid = parts[0]
+                sentence = parts[1].replace("\"", "")
+
+                name1 = parts[2]
+                name2 = parts[3]
+
+                idx = sentence.index("_")
+                context = sentence[:idx].strip()
+                option_template = sentence[idx + 1:].strip()
+
+                label = parts[4]
+
+                if label == "1":
+                    option1 = name1 + " " + option_template
+                    option2 = name2 + " " + option_template
+                else:
+                    option1 = name2 + " " + option_template
+                    option2 = name1 + " " + option_template
+
+
+
+                split_examples.append(
+                    InputExample(
+                        guid='{}-{}'.format(qid, split),
+                        text_a=context,
+                        text_b=[option1, option2],
+                        label=0
+                    )
                 )
-            )
-    return split_examples
+        return split_examples
 
 
-examples = {'train': read_examples(FLAGS.input_data + "/train.tsv", "train"),
-            'val': read_examples(FLAGS.input_data + "/dev.tsv", "train"),
-            'test': [],
-            'darpa': []
-            }
+    examples = {'train': read_examples(FLAGS.input_data + "/train.tsv", "train"),
+                'val': read_examples(FLAGS.input_data + "/dev.tsv", "train"),
+                'test': [],
+                'darpa': []
+                }
 
-train_examples = examples['train'][:FLAGS.num_train] if FLAGS.num_train >= 0 else examples['train']
-val_examples = examples['val']
-test_examples = examples['test']
+    train_examples = examples['train'][:FLAGS.num_train] if FLAGS.num_train >= 0 else examples['train']
+    val_examples = examples['val']
+    test_examples = examples['test']
+elif FLAGS.task == "anli":
+    """
+    ANLI READER
+    """
+    def read_anli_examples(fname, split):
+        anli_examples = []
+        with gcs_agnostic_open(fname, r) as f:
+            for idx, line in enumerate(f):
+                record = json.loads(line)
+                beginning = record['InputSentence1']
+                ending = record['InputSentence5']
+
+                option1 = record['RandomMiddleSentenceQuiz1']
+                option2 = record['RandomMiddleSentenceQuiz2']
+
+                label = record['AnswerRightEnding']
+
+                if label == "1":
+                    context_1 = beginning + " " + option1
+                    text_b = ""
+
+
+                anli_examples.append()
+        return anli_examples
+
+
+
+    examples = {'train': read_anli_examples(FLAGS.input_data + "/train.jsonl", "train"),
+                    'val': read_anli_examples(FLAGS.input_data + "/valid.jsonl", "train"),
+                    'test': [],
+                    'darpa': []
+                    }
+
+    train_examples = examples['train'][:FLAGS.num_train] if FLAGS.num_train >= 0 else examples['train']
+    val_examples = examples['val']
+    test_examples = examples['test']
+
 
 tf.logging.info(
     "@@@@@ {} training examples (num_train={}) @@@@@".format(len(train_examples), FLAGS.num_train))
