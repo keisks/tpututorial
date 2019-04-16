@@ -257,7 +257,7 @@ elif FLAGS.task == "anli":
     """
     def read_anli_examples(fname, split):
         anli_examples = []
-        with gcs_agnostic_open(fname, r) as f:
+        with gcs_agnostic_open(fname, 'r') as f:
             for idx, line in enumerate(f):
                 record = json.loads(line)
                 guid = "%s%s" % (record['InputStoryid'], record['ending'])
