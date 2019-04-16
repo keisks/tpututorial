@@ -13,10 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """BERT finetuning runner."""
+import csv
 
 import tensorflow as tf
 from bert.dataloader import setup_bert, InputExample, PaddingInputExample, \
-    file_based_convert_examples_to_features, file_based_input_fn_builder, _truncate_seq_pair, gcs_agnostic_open, _save_np, _softmax
+    file_based_convert_examples_to_features, file_based_input_fn_builder, _truncate_seq_pair, \
+    gcs_agnostic_open, _save_np, _softmax
 from bert.modeling import model_fn_builder
 import numpy as np
 import os
@@ -31,7 +33,6 @@ FLAGS = flags.FLAGS
 flags.DEFINE_string(
     "output_dir", None,
     "The output directory where the model checkpoints will be written.")
-
 
 flags.DEFINE_string(
     "input_data", '../../data/swag1.jsonl',
@@ -69,7 +70,7 @@ flags.DEFINE_integer("predict_batch_size", 16, "Total batch size for eval.")
 flags.DEFINE_float("learning_rate", 2e-5, "The initial learning rate for Adam.")
 
 flags.DEFINE_integer("num_train_epochs", 3,
-                   "Total number of training epochs to perform.")
+                     "Total number of training epochs to perform.")
 
 flags.DEFINE_float(
     "warmup_proportion", 0.1,
@@ -132,7 +133,6 @@ flags.DEFINE_bool(
     "Use ONLY THE ENDING"
 )
 
-
 # just use it for something?
 hi = FLAGS.use_tpu
 # flags.FLAGS._parse_flags()
@@ -155,10 +155,12 @@ def _part_a(item):
         return item['ctx']
     return item['ctx_a']
 
+
 def _part_b_gt(item):
-    if FLAGS.wikihow or ('ctx_b' not in item) or  len(item['ctx_b']) == 0:
+    if FLAGS.wikihow or ('ctx_b' not in item) or len(item['ctx_b']) == 0:
         return item['gt']
     return '{} {}'.format(item['ctx_b'], item['gt'])
+
 
 def _part_b_gen(item, i):
     if FLAGS.wikihow or ('ctx_b' not in item) or len(item['ctx_b']) == 0:
@@ -166,26 +168,84 @@ def _part_b_gen(item, i):
     return '{} {}'.format(item['ctx_b'], item['gens'][i])
 
 
+"""
+SWAG READER
+"""
+
 # I'll load examples that look like this
 # {"source_dataset": "anet", "id": "v_jkn6uvmqwh4", "labels": ["Drum corps"], "split": "train", "extra_context": ["A parade procession walks down the street in a parade.", "A group of members in green uniforms walks waving flags."], "ctx_a": "Members of the procession walk down the street holding small horn brass instruments.", "ctx_b": "A drum line", "gt": "passes by walking down the street playing their instruments.", "gens": ["arrives and they're outside dancing and asleep.", "turns the lead singer watches the performance.", "has heard approaching them."], "gt_type": "pos", "gens_type": ["unl", "unl", "pos"], "human_written": true}
-examples = {'train': [], 'val': [], 'test': [], 'darpa': []}
-with gcs_agnostic_open(FLAGS.input_data, 'r') as f:
-    for l_no, l in enumerate(f):
-        item = json.loads(l)
-        if item.get('human_written', True):
-            examples[item['split']].append(
+# examples = {'train': [], 'val': [], 'test': [], 'darpa': []}
+# with gcs_agnostic_open(FLAGS.input_data, 'r') as f:
+#     for l_no, l in enumerate(f):
+#         item = json.loads(l)
+#         if item.get('human_written', True):
+#             examples[item['split']].append(
+#                 InputExample(
+#                     guid='{}-{}'.format(item['split'], len(examples[item['split']])),
+#                     text_a=_part_a(item),
+#                     text_b=[_part_b_gt(item)] + [_part_b_gen(item, i) for i, g in enumerate(item['gens'])],
+#                     label=0,
+#                 )
+#             )
+# train_examples = examples['train'][:FLAGS.num_train] if FLAGS.num_train >= 0 else examples['train']
+# tf.logging.info("@@@@@ {} training examples (num_train={}) @@@@@".format(len(train_examples), FLAGS.num_train))
+#
+# val_examples = examples['val']
+# test_examples = examples['test']
+
+
+"""
+WSC READER
+"""
+
+
+def read_examples(fname, split):
+    examples = []
+    with gcs_agnostic_open(FLAGS.input_data, 'r') as f:
+        idx = 0
+        for line in f:
+            if idx == 0:
+                continue
+            parts = line.split("\t")
+
+            qid = parts[0]
+            sentence = parts[1].replace("\"", "")
+
+            name1 = parts[2]
+            name2 = parts[3]
+
+            idx = sentence.index("_")
+            context = sentence[:idx].strip()
+            option_template = sentence[idx + 1:].strip()
+
+            option1 = name1 + " " + option_template
+            option2 = name2 + " " + option_template
+
+            label = parts[4]
+
+            examples.append(
                 InputExample(
-                    guid='{}-{}'.format(item['split'], len(examples[item['split']])),
-                    text_a=_part_a(item),
-                    text_b=[_part_b_gt(item)] + [_part_b_gen(item, i) for i, g in enumerate(item['gens'])],
-                    label=0,
+                    guid='{}-{}'.format(qid, split),
+                    text_a=context,
+                    text_b=[option1, option2],
+                    label=int(label)
                 )
             )
-train_examples = examples['train'][:FLAGS.num_train] if FLAGS.num_train >= 0 else examples['train']
-tf.logging.info("@@@@@ {} training examples (num_train={}) @@@@@".format(len(train_examples), FLAGS.num_train))
+    return examples
 
+
+examples = {'train': read_examples(FLAGS.input_data + "/train.tsv", "train"),
+            'val': read_examples(FLAGS.input_data + "/dev.tsv", "train"),
+            'test': [],
+            'darpa': []
+            }
+
+train_examples = examples['train'][:FLAGS.num_train] if FLAGS.num_train >= 0 else examples['train']
 val_examples = examples['val']
 test_examples = examples['test']
+
+tf.logging.info(
+    "@@@@@ {} training examples (num_train={}) @@@@@".format(len(train_examples), FLAGS.num_train))
 
 run_config, bert_config, tokenizer, init_checkpoint = setup_bert(
     use_tpu=FLAGS.use_tpu,
@@ -229,6 +289,7 @@ estimator = tf.contrib.tpu.TPUEstimator(
     train_batch_size=FLAGS.train_batch_size,
     eval_batch_size=FLAGS.predict_batch_size,
     predict_batch_size=FLAGS.predict_batch_size)
+
 
 def _predict(examples, name='eval'):
     num_actual_examples = len([x for x in examples if not isinstance(x, PaddingInputExample)])
@@ -306,7 +367,7 @@ if FLAGS.do_train:
             do_mask=False,
         )
         for val_round in range(FLAGS.vals_per_epoch):
-            steps_this_round = num_train_steps//(FLAGS.num_train_epochs * FLAGS.vals_per_epoch)
+            steps_this_round = num_train_steps // (FLAGS.num_train_epochs * FLAGS.vals_per_epoch)
             estimator.train(input_fn=train_input_fn, steps=steps_this_round)
             num_steps += steps_this_round
 
@@ -314,7 +375,8 @@ if FLAGS.do_train:
             _save_np(os.path.join(FLAGS.output_dir, f'val-probs-{i}.npy'), val_probs)
 
             acc = np.mean(val_probs.argmax(1) == 0)
-            tf.logging.info("\n\n&&&& Accuracy on epoch{} ({}iter) is {:.3f} &&&&\n".format(i, num_steps, acc))
+            tf.logging.info(
+                "\n\n&&&& Accuracy on epoch{} ({}iter) is {:.3f} &&&&\n".format(i, num_steps, acc))
             accuracies.append({'num_steps': num_steps,
                                'num_epochs': i,
                                'val_round': val_round,
@@ -324,7 +386,6 @@ if FLAGS.do_train:
     accuracies = pd.DataFrame(accuracies)
     accuracies.index.name = 'iteration'
     accuracies.to_csv(os.path.join(FLAGS.output_dir, 'valaccs.csv'))
-
 
 if FLAGS.predict_val:
     probs = _predict(val_examples, name='val')
