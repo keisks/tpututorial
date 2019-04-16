@@ -15,5 +15,5 @@ python bert/run_bert.py \
   --warmup_proportion=0.1 \
   --iterations_per_loop=1000 \
   --use_tpu=True \
-  --tpu_name=$(hostname) \
+  --tpu_name=$(hostname)-2 \
   --bert_large=True
