@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 export PYTHONPATH=$(pwd)
 python -m pdb bert/run_bert.py \
-  --output_dir=gs://tpututorial/wsc/ \
+  --output_dir=gs://chandrab-tpu-tutorial/wsc/ \
   --input_data=data/wsc/ \
   --do_lower_case=True \
   --max_seq_length=64 \
