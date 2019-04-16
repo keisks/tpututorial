@@ -202,8 +202,7 @@ WSC READER
 def read_examples(fname, split):
     examples = []
     with gcs_agnostic_open(fname, 'r') as f:
-        idx = 0
-        for line in f:
+        for idx, line in enumerate(f):
             if idx == 0:
                 continue
             parts = line.split("\t")
