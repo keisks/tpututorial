@@ -31,7 +31,8 @@ do
 				  --use_tpu=True \
 				  --tpu_name=chandrab-tpu-tutorial-2 \
 				  --bert_large=True \
-				  --num_labels 2
+				  --num_labels 2 \
+				  --task wsc
 			done
 		done
 	done
