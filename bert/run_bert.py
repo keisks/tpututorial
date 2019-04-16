@@ -216,17 +216,23 @@ def read_examples(fname, split):
             context = sentence[:idx].strip()
             option_template = sentence[idx + 1:].strip()
 
-            option1 = name1 + " " + option_template
-            option2 = name2 + " " + option_template
-
             label = parts[4]
+
+            if label == "1":
+                option1 = name1 + " " + option_template
+                option2 = name2 + " " + option_template
+            else:
+                option1 = name2 + " " + option_template
+                option2 = name1 + " " + option_template
+
+
 
             split_examples.append(
                 InputExample(
                     guid='{}-{}'.format(qid, split),
                     text_a=context,
                     text_b=[option1, option2],
-                    label=int(label)
+                    label=0
                 )
             )
     return split_examples
