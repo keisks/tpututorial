@@ -18,4 +18,5 @@ python bert/run_bert.py \
   --iterations_per_loop=1000 \
   --use_tpu=True \
   --tpu_name=$(hostname)-2 \
-  --bert_large=True
+  --bert_large=True \
+  --num_labels 2
