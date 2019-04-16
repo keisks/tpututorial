@@ -16,7 +16,7 @@ do
 			do
 				python bert/run_bert.py \
 				  --output_dir=gs://chandrab-tpu-tutorial/wsc_batch-${s}_lr-${l}_epoch-${e}-warmup-${w}/ \
-				  --input_data=data/wsc/ \
+				  --input_data=data/wsc-20k/ \
 				  --do_lower_case=True \
 				  --max_seq_length=64 \
 				  --do_train=True \
@@ -29,7 +29,7 @@ do
 				  --warmup_proportion=${w} \
 				  --iterations_per_loop=1000 \
 				  --use_tpu=True \
-				  --tpu_name=$(hostname)-2 \
+				  --tpu_name=chandrab-tpu-wsc-2 \
 				  --bert_large=True \
 				  --num_labels 2
 			done
