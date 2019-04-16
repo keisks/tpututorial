@@ -13,18 +13,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """BERT finetuning runner."""
-import csv
 
-import tensorflow as tf
-from bert.dataloader import setup_bert, InputExample, PaddingInputExample, \
-    file_based_convert_examples_to_features, file_based_input_fn_builder, _truncate_seq_pair, \
-    gcs_agnostic_open, _save_np, _softmax
-from bert.modeling import model_fn_builder
-import numpy as np
 import os
-import json
+
+import numpy as np
 import pandas as pd
-import time
+import tensorflow as tf
+
+from bert.dataloader import setup_bert, InputExample, PaddingInputExample, \
+    file_based_convert_examples_to_features, file_based_input_fn_builder, gcs_agnostic_open, \
+    _save_np, _softmax
+from bert.modeling import model_fn_builder
 
 flags = tf.flags
 
@@ -200,7 +199,7 @@ WSC READER
 
 
 def read_examples(fname, split):
-    examples = []
+    split_examples = []
     with gcs_agnostic_open(fname, 'r') as f:
         for idx, line in enumerate(f):
             if idx == 0:
@@ -222,7 +221,7 @@ def read_examples(fname, split):
 
             label = parts[4]
 
-            examples.append(
+            split_examples.append(
                 InputExample(
                     guid='{}-{}'.format(qid, split),
                     text_a=context,
@@ -230,7 +229,7 @@ def read_examples(fname, split):
                     label=int(label)
                 )
             )
-    return examples
+    return split_examples
 
 
 examples = {'train': read_examples(FLAGS.input_data + "/train.tsv", "train"),

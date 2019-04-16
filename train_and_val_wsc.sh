@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+set -e
+set -x
 export PYTHONPATH=$(pwd)
 python bert/run_bert.py \
   --output_dir=gs://chandrab-tpu-tutorial/wsc/ \
