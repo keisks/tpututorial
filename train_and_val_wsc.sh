@@ -29,7 +29,7 @@ do
 				  --warmup_proportion=${w} \
 				  --iterations_per_loop=1000 \
 				  --use_tpu=True \
-				  --tpu_name=chandrab-tpu-tutorial-2 \
+				  --tpu_name=chandrab-tpu-wsc-2 \
 				  --bert_large=True \
 				  --num_labels 2 \
 				  --task wsc
