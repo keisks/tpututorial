@@ -1,0 +1,5 @@
+git clone https://github.com/keisks/tpututorial.git
+cd tpututorial
+git checkout wsc
+chmod +x setup.sh && ./setup.sh && source ~/.bashrc
+
