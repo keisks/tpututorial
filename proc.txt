@@ -1,5 +1,8 @@
+### after login, run following ###
 git clone https://github.com/keisks/tpututorial.git
 cd tpututorial
 git checkout wsc
 chmod +x setup.sh && ./setup.sh && source ~/.bashrc
 
+### move data from local to data/ dir ###
+chmod +x train_and_val_wsc.sh && ./train_and_val_wsc.sh
